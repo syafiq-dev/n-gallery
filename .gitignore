@@ -1,0 +1,13 @@
+# secrets and data never go in the repo
+.env
+*.env
+data/
+media/
+thumbs/
+trash/
+meta.json
+meta.json.*
+.secret
+backup-*/
+__pycache__/
+!.env.example

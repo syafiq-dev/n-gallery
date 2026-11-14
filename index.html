@@ -1,0 +1,996 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<meta name="robots" content="noindex">
+<title>Gallery</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Doto:wght@600;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  /* Two modes: Gallery (month grid, like a phone gallery) and Social (Instagram-style feed for two people). Nothing OS skin. */
+  :root {
+    color-scheme: dark;
+    --bg: #000; --fg: #f2f2f2; --dim: #7c7c7c; --line: #1e1e1e; --card: #0f0f0f; --red: #d71921;
+    --dot: "Doto", "Space Mono", monospace; --mono: "Space Mono", ui-monospace, monospace;
+    --side: max(16px, env(safe-area-inset-left, 0px));
+  }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { background: var(--bg); color: var(--fg); font: 13px/1.5 var(--mono); -webkit-font-smoothing: antialiased; }
+  body {
+    min-height: 100vh;
+    background-image: radial-gradient(#ffffff12 1px, transparent 1.2px);
+    background-size: 14px 14px; background-attachment: fixed;
+  }
+  button, a { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; text-decoration: none; }
+  :focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+  .hidden { display: none !important; }
+  .cap { text-transform: uppercase; letter-spacing: .12em; font-size: 11px; }
+  .dim { color: var(--dim); }
+  .pill {
+    border: 1px solid #3a3a3a; border-radius: 999px; padding: 7px 14px; background: #000;
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .pill:hover { border-color: var(--fg); }
+  .pill.solid { background: var(--fg); color: #000; border-color: var(--fg); }
+  .rdot { width: 8px; height: 8px; border-radius: 50%; background: var(--red); display: inline-block; flex: none; }
+  .brand { font: 800 30px/1 var(--dot); display: flex; align-items: flex-start; gap: 5px; }
+  .brand .rdot { width: 7px; height: 7px; margin-top: 3px; }
+  svg.i { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; display: block; }
+  .round { width: 38px; height: 38px; padding: 0; }
+
+  /* avatars: user 1 has a red arc, user 2 a white ring with a red dot */
+  .av { border-radius: 50%; padding: 2px; flex: none; position: relative; width: 34px; height: 34px; }
+  .av.u0 { background: conic-gradient(var(--red) 0 30%, #fff 30% 100%); }
+  .av.u1 { background: #fff; }
+  .av.u2 { background: #f5c542; }
+  .av.u3 { background: #6ec1ff; }
+  .av.u1::after { content: ""; position: absolute; right: 0; bottom: 0; width: 26%; height: 26%; border-radius: 50%; background: var(--red); border: 2px solid #000; }
+  .av span { width: 100%; height: 100%; border-radius: 50%; background: #000; border: 2px solid #000; display: grid; place-items: center; font: 800 14px var(--dot); text-transform: uppercase; }
+  .av.big { width: 64px; height: 64px; padding: 3px; }
+  .av.big span { border-width: 3px; font-size: 26px; }
+
+  /* login */
+  #login { min-height: 100vh; display: grid; place-items: center; padding: 24px var(--side); }
+  #login form { width: min(340px, 100%); display: grid; gap: 28px; }
+  #login .brand { font-size: 56px; } #login .brand .rdot { width: 10px; height: 10px; margin-top: 6px; }
+  input.line {
+    width: 100%; background: transparent; border: 0; border-bottom: 1px solid #3a3a3a; color: var(--fg);
+    font: 16px var(--mono); padding: 10px 0; outline: none;
+  }
+  input.line:focus, textarea.line:focus { border-color: var(--fg); }
+  textarea.line { width: 100%; background: transparent; border: 0; border-bottom: 1px solid #3a3a3a; color: var(--fg);
+    font: 15px var(--mono); padding: 8px 0; outline: none; resize: none; }
+  #vCap { width: 100%; display: grid; gap: 8px; }
+  #vCap p { white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; max-height: 30vh; overflow: auto; }
+  .caption .txt { white-space: pre-wrap; }
+  .post-media { position: relative; }
+  .car { display: flex; width: 100%; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; overscroll-behavior-x: contain; }
+  .car::-webkit-scrollbar { display: none; }
+  .car > * { flex: 0 0 100%; scroll-snap-align: center; display: grid; place-items: center; min-width: 0; }
+  .ccount { position: absolute; top: 10px; right: 10px; background: #000b; padding: 3px 9px; border-radius: 999px; font-size: 11px; pointer-events: none; }
+  .cdots { display: flex; gap: 5px; justify-content: center; padding-top: 10px; }
+  .cdots i { width: 6px; height: 6px; border-radius: 50%; background: #555; }
+  .cdots i.on { background: var(--red); }
+  .cprev { padding: 4px var(--side) 0; display: grid; gap: 3px; text-align: left; color: inherit; width: 100%; }
+  .cprev .more { color: var(--dim); font-size: 13px; }
+  .cprev .one { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #vCom { width: 100%; display: grid; gap: 8px; }
+  #vCom ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; max-height: 26vh; overflow: auto; }
+  #vCom li { display: flex; gap: 8px; align-items: baseline; overflow-wrap: anywhere; }
+  #vCom li .t { flex: 1; white-space: pre-wrap; }
+  #vCom li .x { color: var(--dim); padding: 0 4px; }
+  #vCom form { display: flex; gap: 8px; align-items: end; }
+  #viewer .bottom { max-height: 60vh; overflow: auto; }
+  #pw { letter-spacing: .2em; }
+  .err { color: var(--red); min-height: 1.5em; }
+  .shake { animation: shake .3s; }
+  @keyframes shake { 25% { transform: translateX(-6px) } 75% { transform: translateX(6px) } }
+
+  /* top bar */
+  header {
+    position: sticky; top: 0; z-index: 5; background: #000d; backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    border-bottom: 1px solid var(--line); padding: max(12px, env(safe-area-inset-top)) var(--side) 12px;
+  }
+  .bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; max-width: 1100px; margin: 0 auto; }
+  .bar .right { display: flex; gap: 8px; align-items: center; }
+  .bar.sub { margin-top: 12px; }
+  .tabs { display: flex; gap: 6px; overflow-x: auto; }
+  .tabs button { padding: 6px 14px; border-radius: 999px; border: 1px solid transparent; color: var(--dim); text-transform: inherit; letter-spacing: inherit; }
+  .tabs button[aria-pressed="true"] { color: var(--fg); border-color: #3a3a3a; }
+  main { max-width: 1100px; margin: 0 auto; padding-bottom: calc(90px + env(safe-area-inset-bottom)); }
+
+  /* gallery mode */
+  #galleryView { padding: 0 var(--side); }
+  .group h2 { font: 600 22px/1 var(--dot); margin: 26px 2px 12px; display: flex; justify-content: space-between; align-items: baseline; }
+  .group h2 small { font: 11px var(--mono); color: var(--dim); letter-spacing: .12em; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 4px; }
+  @media (max-width: 520px) { .grid { grid-template-columns: repeat(3, 1fr); gap: 3px; } }
+  .tile { position: relative; aspect-ratio: 1; background: var(--card); border-radius: 10px; overflow: hidden; padding: 0; display: block; width: 100%; }
+  .tile img, .post-media img { opacity: 0; transition: opacity .25s; }
+  .tile img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .tile img.ok, .post-media img.ok { opacity: 1; }
+  .tag {
+    position: absolute; left: 6px; bottom: 6px; display: flex; align-items: center; gap: 5px;
+    background: #000b; border-radius: 999px; padding: 2px 7px 2px 6px; font-size: 9px; letter-spacing: .14em;
+  }
+  .tag .rdot { width: 6px; height: 6px; }
+  .who-dot { position: absolute; right: 6px; top: 6px; width: 20px; height: 20px; border-radius: 50%; background: #000b; display: grid; place-items: center; font: 800 10px var(--dot); text-transform: uppercase; }
+  .who-dot.u0 { box-shadow: inset 0 0 0 1.5px var(--red); }
+  .who-dot.u1 { box-shadow: inset 0 0 0 1.5px #fff; }
+  .who-dot.u2 { box-shadow: inset 0 0 0 1.5px #f5c542; }
+  .who-dot.u3 { box-shadow: inset 0 0 0 1.5px #6ec1ff; }
+  .empty { text-align: center; padding: 14vh var(--side); color: var(--dim); display: grid; gap: 14px; justify-items: center; }
+  .empty .brand { font-size: 30px; color: #444; }
+
+  /* social mode */
+  .people { display: flex; gap: 18px; padding: 16px var(--side) 14px; border-bottom: 1px solid var(--line); max-width: 470px; margin: 0 auto; overflow-x: auto; }
+  .people button { display: grid; justify-items: center; gap: 6px; color: var(--dim); min-width: 72px; }
+  .people button[aria-pressed="true"] { color: var(--fg); }
+  .people button[aria-pressed="false"] .av { opacity: .45; }
+  .people .all { width: 64px; height: 64px; border-radius: 50%; border: 1px dashed #555; display: grid; place-items: center; font: 800 18px var(--dot); }
+  .people.pick { padding: 12px 0 0; border: 0; justify-content: flex-start; }
+  .people .lbl { max-width: 96px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; }
+  .feed { max-width: 470px; margin: 0 auto; }
+  .post { border-bottom: 1px solid var(--line); padding-bottom: 16px; margin-bottom: 6px; }
+  .post-head { display: flex; align-items: center; gap: 10px; padding: 10px var(--side); }
+  .post-head .who { min-width: 0; flex: 1; line-height: 1.25; }
+  .post-head .who b { font: 800 17px var(--dot); display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .post-media { background: var(--card); display: grid; place-items: center; min-height: 240px; }
+  .post-media img, .post-media video { width: 100%; max-height: 78vh; object-fit: contain; display: block; }
+  .post-actions { display: flex; gap: 18px; align-items: center; padding: 12px var(--side) 6px; }
+  .post-actions .grow { flex: 1; }
+  .caption { padding: 0 var(--side); overflow-wrap: anywhere; }
+  .day { display: flex; align-items: center; gap: 10px; padding: 20px var(--side) 6px; max-width: 470px; margin: 0 auto; }
+  .day::after { content: ""; flex: 1; border-top: 1px dashed #333; }
+  .day b { font: 800 20px var(--dot); }
+
+  /* bottom bar */
+  nav.tabbar {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; background: #000e; border-top: 1px solid var(--line);
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    display: grid; grid-template-columns: repeat(4, 1fr); padding: 8px var(--side) max(10px, env(safe-area-inset-bottom));
+  }
+  nav.tabbar button { display: grid; justify-items: center; align-content: start; gap: 2px; color: var(--dim); padding: 2px 0; }
+  nav.tabbar button[aria-current="page"] { color: var(--fg); }
+  nav.tabbar button[aria-current="page"] .cap::before { content: ""; display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: var(--red); margin: 0 5px 1px 0; vertical-align: middle; }
+  nav.tabbar .cap { font-size: 9px; }
+  nav.tabbar .add svg { width: 32px; height: 32px; }
+
+  /* sheets: settings */
+  .sheet-bg { position: fixed; inset: 0; background: #000a; z-index: 30; display: grid; align-items: end; justify-items: center; }
+  .sheet {
+    width: min(480px, 100%); background: #0c0c0c; border: 1px solid #262626; border-bottom: 0; border-radius: 22px 22px 0 0;
+    padding: 20px var(--side) max(20px, env(safe-area-inset-bottom)); display: grid; gap: 20px;
+  }
+  .sheet h3 { font: 800 24px var(--dot); }
+  #npPrev { display: flex; gap: 6px; overflow-x: auto; }
+  #npPrev img, #npPrev video { width: 96px; height: 96px; object-fit: cover; border-radius: 6px; background: var(--card); flex: none; }
+  #npText { min-height: 4.5em; }
+  #trashList { display: grid; gap: 14px; max-height: 60vh; overflow: auto; }
+  .trow { display: flex; gap: 12px; align-items: center; }
+  .trow .thumbs { display: flex; gap: 4px; flex: none; }
+  .trow img, .trow .vid { width: 56px; height: 56px; object-fit: cover; border-radius: 6px; background: var(--card); display: grid; place-items: center; font-size: 10px; }
+  .trow .info { flex: 1; min-width: 0; display: grid; gap: 2px; font-size: 12px; }
+  .trow .acts { display: grid; gap: 6px; }
+  .sheet .row { display: flex; gap: 14px; align-items: center; }
+  .sheet .row > div:not(.av) { flex: 1; min-width: 0; }
+
+  /* upload toast */
+  #toast {
+    position: fixed; left: 50%; bottom: calc(84px + env(safe-area-inset-bottom)); transform: translateX(-50%);
+    width: min(420px, calc(100% - 32px)); background: #111; border: 1px solid #2a2a2a; border-radius: 18px;
+    padding: 14px 16px; z-index: 20; display: grid; gap: 10px;
+  }
+  #toast .row { display: flex; justify-content: space-between; gap: 12px; }
+  #toast .row span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #tErr { color: var(--red); overflow-wrap: anywhere; }
+  .dots { display: grid; grid-template-columns: repeat(24, 1fr); gap: 4px; }
+  .dots i { aspect-ratio: 1; border-radius: 50%; background: #2a2a2a; }
+  .dots i.on { background: var(--red); }
+  #drop {
+    position: fixed; inset: 12px; border: 2px dashed var(--fg); border-radius: 24px; z-index: 30;
+    display: grid; place-items: center; background: #000c; font: 800 40px var(--dot); pointer-events: none;
+  }
+
+  /* viewer */
+  #viewer { position: fixed; inset: 0; background: #000; z-index: 40; display: grid; grid-template-rows: auto 1fr auto; }
+  #viewer .top, #viewer .bottom { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px var(--side); }
+  #viewer .top { padding-top: max(12px, env(safe-area-inset-top)); }
+  #viewer .bottom { padding-bottom: max(14px, env(safe-area-inset-bottom)); flex-wrap: wrap; }
+  #vcount { font: 800 22px var(--dot); font-variant-numeric: tabular-nums; }
+  #vname { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #stage { position: relative; min-height: 0; display: grid; grid-template: 100% / 100%; place-items: center; touch-action: pan-y; overflow: hidden; }
+  #stage img, #stage video { max-width: 100%; max-height: 100%; object-fit: contain; display: block; }
+  #stage img { touch-action: none; transform-origin: center; cursor: zoom-in; user-select: none; -webkit-user-drag: none; }
+  #stage img.zoomed { cursor: grab; }
+  /* full-screen preview: photo edge to edge, bars float on top and start hidden; tap to show */
+  #viewer { display: block; }
+  #viewer #stage { position: absolute; inset: 0; }
+  #viewer .top, #viewer .bottom { position: absolute; left: 0; right: 0; z-index: 2; transition: opacity .2s; }
+  #viewer .top { top: 0; background: linear-gradient(#000c, #0000); }
+  #viewer .bottom { bottom: 0; background: #000d; }
+  #viewer.bare .top, #viewer.bare .bottom, #viewer.bare .nav { opacity: 0; pointer-events: none; }
+  .post-media img { cursor: zoom-in; }
+  #stage video { width: 100%; height: 100%; }
+  .nav { position: absolute; top: 20%; bottom: 20%; width: 22%; display: flex; align-items: center; padding: 0 12px; color: #fff8; font-size: 24px; }
+  .nav.prev { left: 0; } .nav.next { right: 0; justify-content: flex-end; }
+  .seg { display: inline-flex; border: 1px solid #3a3a3a; border-radius: 999px; padding: 3px; gap: 2px; max-width: 100%; overflow-x: auto; }
+  .seg button { padding: 5px 12px; border-radius: 999px; color: var(--dim); display: inline-flex; align-items: center; gap: 6px; max-width: 140px; }
+  .seg button span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .seg button[aria-pressed="true"] { background: var(--fg); color: #000; }
+  .vrow { display: flex; gap: 8px; align-items: center; }
+  .danger { color: var(--red); border-color: #5a1a1d; }
+  .danger.armed { background: var(--red); color: #fff; border-color: var(--red); }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V21h-6v-6H9v6H3z"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></symbol>
+  <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M15 3v18M3 9h18M3 15h18"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="5"/><path d="M12 8v8M8 12h8"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="M12 4v12M7 11l5 5 5-5M5 20h14"/></symbol>
+  <symbol id="i-expand" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></symbol>
+  <symbol id="i-sort" viewBox="0 0 24 24"><path d="M7 4v16M3 16l4 4 4-4M17 20V4M13 8l4-4 4 4"/></symbol>
+  <symbol id="i-shuffle" viewBox="0 0 24 24"><path d="M3 7h3.5c5 0 6 10 11 10H21M3 17h3.5c2 0 3.2-1.6 4.2-3.6M14 8.6c.9-.9 2-1.6 3.5-1.6H21M18 4l3 3-3 3M18 14l3 3-3 3"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/></symbol>
+</svg>
+
+<section id="login" class="hidden">
+  <form id="loginForm">
+    <div class="brand">GALLERY<span class="rdot"></span></div>
+    <div>
+      <span class="cap dim">Who are you?</span>
+      <div class="people pick" id="pick" role="group" aria-label="Who are you"></div>
+    </div>
+    <div>
+      <label class="cap dim" for="pw">Password</label>
+      <input id="pw" class="line" type="password" autocomplete="current-password" required autofocus>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <span class="err cap" id="loginErr" role="alert"></span>
+      <button class="pill solid cap" type="submit">Enter <span class="rdot"></span></button>
+    </div>
+  </form>
+</section>
+
+<section id="app" class="hidden">
+  <header>
+    <div class="bar">
+      <div class="brand" id="title">GALLERY<span class="rdot"></span></div>
+      <div class="right">
+        <button class="pill cap hidden" id="sortBtn" aria-label="Change sort order"></button>
+        <button class="pill round" id="setBtn" aria-label="Settings"><svg class="i" style="width:18px;height:18px"><use href="#i-gear"/></svg></button>
+      </div>
+    </div>
+    <div class="bar sub" id="galleryTabs">
+      <div class="tabs cap" role="group" aria-label="Filter">
+        <button data-f="all" aria-pressed="true">All</button>
+        <button data-f="image" aria-pressed="false">Photos</button>
+        <button data-f="video" aria-pressed="false">Videos</button>
+      </div>
+      <span class="cap dim" id="count"></span>
+    </div>
+  </header>
+
+  <main>
+    <div id="galleryView"></div>
+    <div id="socialView" class="hidden">
+      <div class="people" id="people" role="group" aria-label="Show posts from"></div>
+      <div id="feedOut"></div>
+    </div>
+  </main>
+
+  <nav class="tabbar" aria-label="Mode">
+    <button data-v="all"><svg class="i"><use href="#i-grid"/></svg><span class="cap">Gallery</span></button>
+    <button data-v="social"><svg class="i"><use href="#i-home"/></svg><span class="cap">Feed</span></button>
+    <button class="add" id="uploadBtn" aria-label="Upload"><svg class="i"><use href="#i-plus"/></svg></button>
+    <button data-v="gallery"><svg class="i"><use href="#i-user"/></svg><span class="cap">Me</span></button>
+  </nav>
+  <input type="file" id="file" multiple accept="image/jpeg,image/png,image/gif,image/webp,image/avif,video/mp4,video/quicktime,video/webm,.m4v,.mov" hidden>
+</section>
+
+<div class="sheet-bg hidden" id="newPost" role="dialog" aria-modal="true" aria-label="New post">
+  <form class="sheet" id="npForm">
+    <h3>NEW POST</h3>
+    <div id="npPrev"></div>
+    <div>
+      <textarea class="line" id="npText" rows="3" maxlength="2200" placeholder="Write a caption…" aria-label="Caption"></textarea>
+      <span class="cap dim" id="npNote"></span>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px">
+      <button class="pill cap" type="button" id="npCancel">Cancel</button>
+      <button class="pill solid cap" type="submit">Share <span class="rdot"></span></button>
+    </div>
+  </form>
+</div>
+
+<div class="sheet-bg hidden" id="trash" role="dialog" aria-modal="true" aria-label="Recently deleted">
+  <div class="sheet">
+    <h3>RECENTLY DELETED</h3>
+    <p class="cap dim" id="trashNote"></p>
+    <div id="trashList"></div>
+    <div style="display:flex;justify-content:flex-end"><button class="pill cap" type="button" id="trashClose">Close</button></div>
+  </div>
+</div>
+
+<div class="sheet-bg hidden" id="settings" role="dialog" aria-modal="true" aria-label="Settings">
+  <form class="sheet" id="setForm">
+    <h3>SETTINGS</h3>
+    <div id="setRows" style="display:grid;gap:14px"></div>
+    <button class="pill cap" type="button" id="trashBtn" style="justify-self:start">Recently deleted</button>
+    <span class="err cap" id="setErr" role="alert"></span>
+    <div style="display:flex;justify-content:space-between;gap:10px">
+      <button class="pill cap" type="button" id="logoutBtn">Log out</button>
+      <div style="display:flex;gap:8px">
+        <button class="pill cap" type="button" id="setCancel">Cancel</button>
+        <button class="pill solid cap" type="submit">Save <span class="rdot"></span></button>
+      </div>
+    </div>
+  </form>
+</div>
+
+<div id="toast" class="hidden" role="status">
+  <div class="row cap"><span id="tName"></span><span id="tNum"></span></div>
+  <div class="dots" id="tDots"></div>
+  <div id="tErr" class="cap hidden"></div>
+</div>
+<div id="drop" class="hidden">DROP TO UPLOAD</div>
+
+<section id="viewer" class="hidden" role="dialog" aria-modal="true" aria-label="Viewer">
+  <div class="top">
+    <button class="pill round" id="vClose" aria-label="Close">✕</button>
+    <span id="vcount"></span>
+    <a class="pill round" id="vDl" aria-label="Download" download><svg class="i" style="width:18px;height:18px"><use href="#i-down"/></svg></a>
+  </div>
+  <div id="stage"></div>
+  <div class="bottom">
+    <div style="min-width:0;display:grid;flex:1 1 160px">
+      <span id="vname" class="cap"></span>
+      <span class="cap dim" id="vmeta"></span>
+    </div>
+    <div id="vCap"></div>
+    <div id="vCom"></div>
+    <div class="vrow">
+      <div class="seg cap" id="vUser" role="group" aria-label="Posted by"></div>
+      <button class="pill cap danger" id="vDel">Delete</button>
+    </div>
+  </div>
+</section>
+
+<script>
+const $ = s => document.querySelector(s);
+const D = window.DEMO; // set only by the offline preview
+let items = [], users = ["user1", "user2", "user3", "user4"], view = [], cur = -1, shuffled = new Map();
+const pref = (k, v) => { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch { return null; } };
+let me = null, pick = Math.min(3, Math.max(0, parseInt(pref("user")) || 0));
+let mode = ["all", "gallery"].includes(pref("mode")) ? pref("mode") : "social", sort = pref("sort") || "new", filter = "all", who = "all";
+
+const enc = n => encodeURIComponent(n);
+const esc = s => s.replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`);
+const src = (kind, n) => D ? D.src(kind, n) : `/${kind}/${enc(n)}`;
+const api = (method, url, body) => D ? D.api(method, url, body) : fetch(url, {
+  method, headers: { "X-Gallery": "1", "Content-Type": "application/json" }, body: body && JSON.stringify(body)
+});
+const fmtSize = b => b > 1e9 ? (b / 1e9).toFixed(1) + " GB" : b > 1e6 ? (b / 1e6).toFixed(1) + " MB" : Math.ceil(b / 1e3) + " KB";
+const month = t => new Date(t).toLocaleDateString(undefined, { month: "short", year: "numeric" }).toUpperCase();
+const dayKey = t => new Date(t).toDateString();
+const dayLabel = t => new Date(t).toLocaleDateString(undefined, { day: "2-digit", month: "short", year: "numeric" }).toUpperCase();
+const ago = t => {
+  const d = Math.floor((Date.now() - t) / 86400000);
+  return d < 1 ? "Today" : d < 2 ? "Yesterday" : d < 7 ? d + " days ago" : d < 30 ? Math.floor(d / 7) + "w ago" : d < 365 ? Math.floor(d / 30) + "mo ago" : Math.floor(d / 365) + "y ago";
+};
+const icon = id => `<svg class="i"><use href="#i-${id}"/></svg>`;
+const pad = n => String(n).padStart(3, "0");
+const ids = () => users.map((_, i) => i);
+const av = (u, big) => `<div class="av u${u}${big ? " big" : ""}"><span>${esc(users[u][0] || "?")}</span></div>`;
+
+function show(id) { for (const s of ["login", "app"]) $("#" + s).classList.toggle("hidden", s !== id); }
+
+async function load() {
+  const r = await api("GET", "/api/list");
+  if (r.status === 401) { showLogin(); return; }
+  const d = await r.json();
+  items = d.items; users = d.users || users; me = d.me;
+  indexPosts();
+  show("app");
+  render();
+}
+
+/* carousel posts: files sharing a post id belong together; the first one carries caption + comments */
+let groups = new Map();
+function indexPosts() {
+  groups = new Map();
+  for (const it of items) {
+    it.key = it.post || "f:" + it.name;
+    if (!groups.has(it.key)) groups.set(it.key, []);
+    groups.get(it.key).push(it);
+  }
+  for (const g of groups.values()) g.sort((a, b) => a.pi - b.pi);
+}
+const membersOf = it => groups.get(it.key) || [it];
+const leadOf = it => membersOf(it)[0];
+
+const SORTS = { new: ["Newest", "sort"], old: ["Oldest", "sort"], rnd: ["Random", "shuffle"] };
+function sorted(list) {
+  if (sort === "rnd") {
+    for (const i of list) if (!shuffled.has(i.name)) shuffled.set(i.name, Math.random());
+    return [...list].sort((a, b) => shuffled.get(a.name) - shuffled.get(b.name));
+  }
+  return [...list].sort((a, b) => sort === "old" ? a.mtime - b.mtime : b.mtime - a.mtime);
+}
+
+function render() {
+  const social = mode === "social";
+  $("#galleryView").classList.toggle("hidden", social);
+  $("#galleryTabs").classList.toggle("hidden", social);
+  $("#socialView").classList.toggle("hidden", !social);
+  $("#sortBtn").classList.toggle("hidden", !social);
+  $("#title").innerHTML = `${social ? "FEED" : mode === "all" ? "GALLERY" : esc(users[me] || "ME")}<span class="rdot"></span>`;
+  $("#sortBtn").innerHTML = `<svg class="i" style="width:16px;height:16px"><use href="#i-${SORTS[sort][1]}"/></svg>${SORTS[sort][0]}`;
+  document.querySelectorAll("nav.tabbar [data-v]").forEach(b =>
+    b.dataset.v === mode ? b.setAttribute("aria-current", "page") : b.removeAttribute("aria-current"));
+  if (social) {
+    if (who !== "all" && +who === me) who = "all";
+    const leads = sorted([...groups.values()].map(g => g[0]).filter(i => i.user !== me && (who === "all" || i.user === +who))); // Feed: everyone else
+    view = leads.flatMap(membersOf);
+    renderPeople(); renderFeed();
+  } else {
+    view = items.filter(i => (mode === "all" || i.user === me) && (filter === "all" || i.type === filter)).sort((a, b) => b.mtime - a.mtime);
+    renderGallery();
+  }
+}
+
+const emptyHTML = `<div class="empty"><div class="brand">NOTHING YET</div><p class="cap">Tap + to add a photo or video</p></div>`;
+
+function lazyImg(it, kind) {
+  const img = new Image();
+  img.loading = "lazy"; img.decoding = "async"; img.alt = "";
+  img.onload = () => img.classList.add("ok");
+  img.onerror = () => { if (it.type === "image" && !img.dataset.f) { img.dataset.f = 1; img.src = src("m", it.name); } };
+  img.src = src(kind, it.name);
+  return img;
+}
+
+/* gallery mode: newest first, grouped by month */
+function renderGallery() {
+  $("#count").textContent = pad(view.length) + " items";
+  const out = $("#galleryView");
+  out.innerHTML = "";
+  if (!view.length) { out.innerHTML = emptyHTML; return; }
+  let grid, last;
+  view.forEach((it, idx) => {
+    const m = month(it.mtime);
+    if (m !== last) {
+      last = m;
+      const g = document.createElement("section");
+      g.className = "group";
+      g.innerHTML = `<h2>${m}<small>${view.filter(x => month(x.mtime) === m).length}</small></h2><div class="grid"></div>`;
+      out.append(g);
+      grid = g.lastChild;
+    }
+    const b = document.createElement("button");
+    b.className = "tile";
+    b.setAttribute("aria-label", `${it.name}, ${users[it.user]}`);
+    b.append(lazyImg(it, "t"));
+    b.insertAdjacentHTML("beforeend", `<span class="who-dot u${it.user}">${esc(users[it.user][0] || "?")}</span>`);
+    if (it.type === "video") b.insertAdjacentHTML("beforeend", `<span class="tag cap"><span class="rdot"></span>VID</span>`);
+    b.onclick = () => openV(idx);
+    grid.append(b);
+  });
+}
+
+/* social mode: two people, Instagram-style feed */
+function renderPeople() {
+  const count = u => items.filter(i => i.user === u).length;
+  $("#people").innerHTML =
+    `<button data-w="all" aria-pressed="${who === "all"}"><div class="all">${items.filter(i => i.user !== me).length}</div><span class="lbl cap">Everyone</span></button>` +
+    ids().filter(u => u !== me).map(u => `<button data-w="${u}" aria-pressed="${who === String(u)}">${av(u, true)}<span class="lbl">${esc(users[u])} · ${count(u)}</span></button>`).join("");
+  $("#people").querySelectorAll("button").forEach(b => b.onclick = () => { who = b.dataset.w; render(); scrollTo(0, 0); });
+}
+
+// Feed videos play muted while on screen, like Instagram.
+const io = "IntersectionObserver" in window && new IntersectionObserver(es => es.forEach(e => {
+  e.intersectionRatio > .6 ? e.target.play().catch(() => {}) : e.target.pause();
+}), { threshold: [0, .6] });
+
+function renderFeed() {
+  const out = $("#feedOut");
+  out.innerHTML = "";
+  if (!view.length) { out.innerHTML = emptyHTML; return; }
+  let last;
+  const leads = view.filter(x => leadOf(x) === x);
+  leads.forEach((it, n) => {
+    const idx = view.indexOf(it), group = membersOf(it);
+    let at = 0; // slide currently shown
+    if (sort !== "rnd" && dayKey(it.mtime) !== last) {
+      last = dayKey(it.mtime);
+      out.insertAdjacentHTML("beforeend", `<div class="day"><span class="rdot"></span><b>${dayLabel(it.mtime)}</b></div>`);
+    }
+    const p = document.createElement("article");
+    p.className = "post feed";
+    p.innerHTML = `
+      <div class="post-head">${av(it.user)}
+        <div class="who"><b>${esc(users[it.user])}</b><span class="cap dim">${group.length > 1 ? group.length + " items" : it.type === "video" ? "Video" : "Photo"} · ${ago(it.mtime)}</span></div></div>
+      <div class="post-media"></div>
+      <div class="post-actions">
+        <button data-a="open" aria-label="Open full screen">${icon("expand")}</button>
+        <a data-a="dl" aria-label="Download" download>${icon("down")}</a>
+        <span class="grow"></span>
+        <span class="cap dim">${pad(n + 1)}/${pad(leads.length)}</span>
+      </div>
+      <p class="caption"><b>${esc(users[it.user])}</b> <span class="txt"></span></p>`;
+    const media = p.querySelector(".post-media");
+    const slide = (x, k) => {
+      if (x.type === "video") {
+        const v = document.createElement("video");
+        Object.assign(v, { src: src("m", x.name), poster: src("p", x.name), muted: true, loop: true, playsInline: true, controls: true, preload: "none" });
+        io && io.observe(v);
+        return v;
+      }
+      const img = lazyImg(x, "p");
+      img.onclick = () => openV(idx + k); // tap a photo to view it full screen
+      return img;
+    };
+    if (group.length === 1) media.append(slide(it, 0));
+    else {
+      const car = document.createElement("div"), cnt = document.createElement("span"), dots = document.createElement("div");
+      car.className = "car"; cnt.className = "ccount cap"; dots.className = "cdots";
+      group.forEach((x, k) => { const s = document.createElement("div"); s.append(slide(x, k)); car.append(s); dots.append(document.createElement("i")); });
+      const mark = () => {
+        at = Math.round(car.scrollLeft / Math.max(1, car.clientWidth));
+        cnt.textContent = `${at + 1}/${group.length}`;
+        [...dots.children].forEach((d, k) => d.classList.toggle("on", k === at));
+        p.querySelector('[data-a="dl"]').href = src("m", group[at].name);
+        car.querySelectorAll("video").forEach((v, k) => v.closest("div") !== car.children[at] && v.pause());
+      };
+      car.addEventListener("scroll", () => requestAnimationFrame(mark), { passive: true });
+      media.append(car, cnt);
+      media.after(dots);
+      requestAnimationFrame(mark);
+    }
+    if (it.caption) p.querySelector(".caption .txt").textContent = it.caption;
+    else p.querySelector(".caption").remove();
+    const cp = document.createElement("button");
+    cp.className = "cprev";
+    cp.innerHTML = it.comments
+      ? `${it.comments > 1 ? `<span class="more">View all ${it.comments} comments</span>` : ""}<span class="one"><b>${esc(users[it.last.by])}</b> <span></span></span>`
+      : `<span class="more">Add a comment…</span>`;
+    if (it.comments) cp.querySelector(".one span").textContent = it.last.text;
+    cp.onclick = () => openV(idx, true);
+    p.append(cp);
+    p.querySelector('[data-a="open"]').onclick = () => openV(idx + at);
+    p.querySelector('[data-a="dl"]').href = src("m", group[at].name);
+    out.append(p);
+  });
+}
+
+document.querySelectorAll("#galleryTabs .tabs button").forEach(b => b.onclick = () => {
+  filter = b.dataset.f;
+  document.querySelectorAll("#galleryTabs .tabs button").forEach(x => x.setAttribute("aria-pressed", x === b));
+  render();
+});
+document.querySelectorAll("nav.tabbar [data-v]").forEach(b => b.onclick = () => {
+  if (mode === b.dataset.v) return scrollTo({ top: 0, behavior: "smooth" });
+  mode = b.dataset.v; pref("mode", mode); render(); scrollTo(0, 0);
+});
+$("#sortBtn").onclick = () => {
+  sort = { new: "old", old: "rnd", rnd: "new" }[sort];
+  if (sort === "rnd") shuffled.clear(); // fresh shuffle each time Random comes round
+  pref("sort", sort); render(); scrollTo(0, 0);
+};
+
+/* settings: rename the two people */
+/* Recently deleted: restore within 30 days, then the Pi erases them */
+async function openTrash() {
+  closeSettings();
+  $("#trash").classList.remove("hidden");
+  const list = $("#trashList");
+  list.innerHTML = `<p class="cap dim">Loading…</p>`;
+  const r = await api("GET", "/api/trash");
+  if (!r.ok) { list.innerHTML = `<p class="cap dim">Couldn't load</p>`; return; }
+  const d = await r.json();
+  $("#trashNote").textContent = `Kept ${d.days} days, then erased for good`;
+  if (!d.items.length) { list.innerHTML = `<p class="cap dim">Nothing here</p>`; return; }
+  list.innerHTML = "";
+  for (const e of d.items) {
+    const left = Math.max(0, Math.ceil(d.days - (Date.now() - e.at) / 86400000));
+    const row = document.createElement("div");
+    row.className = "trow";
+    row.innerHTML = `<div class="thumbs"></div>
+      <div class="info"><b>${e.files.length > 1 ? e.files.length + " items" : e.files[0].type || "1 item"}</b>
+        <span class="dim">Posted by ${esc(users[e.files[0].user] || "?")} · deleted by ${esc(users[e.by] || "?")}</span>
+        <span class="dim">${ago(e.at)} · ${left} day${left === 1 ? "" : "s"} left</span></div>
+      <div class="acts"><button class="pill cap solid" data-a="restore">Restore</button><button class="pill cap danger" data-a="erase">Erase</button></div>`;
+    row.querySelector(".info b").textContent = e.files.length > 1 ? `${e.files.length} items` : e.files[0].name;
+    const th = row.querySelector(".thumbs");
+    e.files.slice(0, 3).forEach(f => {
+      if (/\.(mp4|webm|mov|m4v)$/i.test(f.name)) th.insertAdjacentHTML("beforeend", `<div class="vid cap">VID</div>`);
+      else th.append(Object.assign(new Image(), { src: `/x/${e.id}/${enc(f.name)}`, alt: "", loading: "lazy" }));
+    });
+    row.querySelector('[data-a="restore"]').onclick = async ev => {
+      ev.target.disabled = true;
+      const r2 = await api("POST", "/api/trash/restore", { id: e.id });
+      if (r2.ok) { row.remove(); load(); } else ev.target.textContent = "Failed";
+    };
+    row.querySelector('[data-a="erase"]').onclick = async ev => {
+      const b = ev.target;
+      if (!b.classList.contains("armed")) { b.classList.add("armed"); b.textContent = "Sure?"; return; }
+      const r2 = await api("POST", "/api/trash/erase", { id: e.id });
+      if (r2.ok) row.remove(); else b.textContent = "Failed";
+    };
+    list.append(row);
+  }
+}
+$("#trashBtn").onclick = openTrash;
+$("#trashClose").onclick = () => $("#trash").classList.add("hidden");
+$("#trash").onclick = e => { if (e.target.id === "trash") $("#trash").classList.add("hidden"); };
+
+function openSettings() {
+  $("#setRows").innerHTML = ids().map(i => `<div class="row"><div class="av big u${i}"><span id="setA${i}"></span></div>
+      <div><label class="cap dim" for="name${i}">Person ${i + 1}</label><input class="line" id="name${i}" maxlength="24" required></div></div>`).join("");
+  ids().forEach(i => {
+    $("#name" + i).value = users[i]; $("#setA" + i).textContent = users[i][0];
+    $("#name" + i).oninput = e => $("#setA" + i).textContent = e.target.value.trim()[0] || "?";
+  });
+  $("#setErr").textContent = "";
+  $("#settings").classList.remove("hidden");
+}
+const closeSettings = () => $("#settings").classList.add("hidden");
+$("#setBtn").onclick = openSettings;
+$("#setCancel").onclick = closeSettings;
+$("#settings").onclick = e => { if (e.target.id === "settings") closeSettings(); };
+$("#setForm").onsubmit = async e => {
+  e.preventDefault();
+  const r = await api("POST", "/api/users", { users: ids().map(i => $("#name" + i).value.trim()) });
+  if (!r.ok) { $("#setErr").textContent = "Names must be 1 to 24 characters"; return; }
+  users = (await r.json()).users;
+  closeSettings(); render();
+};
+
+/* login: pick who you are, then the shared password */
+async function showLogin() {
+  show("login");
+  try { const r = await api("GET", "/api/users"); if (r.ok) users = (await r.json()).users; } catch {}
+  $("#pick").innerHTML = ids().map(u =>
+    `<button type="button" data-u="${u}" aria-pressed="${pick === u}">${av(u, true)}<span class="lbl">${esc(users[u])}</span></button>`).join("");
+  $("#pick").querySelectorAll("button").forEach(b => b.onclick = () => { pick = +b.dataset.u; pref("user", pick); showLogin(); });
+  $("#pw").focus();
+}
+$("#loginForm").onsubmit = async e => {
+  e.preventDefault();
+  $("#loginErr").textContent = "";
+  const r = await api("POST", "/api/login", { password: $("#pw").value, user: pick });
+  if (r.ok) { $("#pw").value = ""; load(); return; }
+  $("#loginErr").textContent = r.status === 401 ? "Wrong password" : "Error " + r.status;
+  const f = $("#loginForm"); f.classList.remove("shake"); void f.offsetWidth; f.classList.add("shake");
+};
+$("#logoutBtn").onclick = async () => { await api("POST", "/api/logout"); items = []; me = null; closeSettings(); showLogin(); };
+
+/* upload: in Social mode with one person selected, new posts go to that person */
+$("#uploadBtn").onclick = () => $("#file").click();
+$("#file").onchange = e => { newPost([...e.target.files]); e.target.value = ""; };
+
+/* IG-style "New post": preview + caption, then Share. With several files the caption goes on the first one. */
+let npFiles = [], npUrls = [];
+const MAX_PER_POST = 10;
+function newPost(files) {
+  if (busy || !files.length) return;
+  const extra = files.length - MAX_PER_POST;
+  files = files.slice(0, MAX_PER_POST);
+  npFiles = files;
+  setTimeout(() => { if (extra > 0) $("#npNote").textContent = `Max ${MAX_PER_POST} per post, ${extra} left out`; });
+  npUrls.forEach(URL.revokeObjectURL);
+  npUrls = files.slice(0, 10).map(f => URL.createObjectURL(f));
+  $("#npPrev").innerHTML = "";
+  files.slice(0, 10).forEach((f, i) => {
+    const el = f.type.startsWith("video") ? Object.assign(document.createElement("video"), { muted: true, playsInline: true, preload: "metadata" })
+                                         : Object.assign(new Image(), { alt: "" });
+    el.src = npUrls[i];
+    $("#npPrev").append(el);
+  });
+  $("#npText").value = "";
+  $("#npNote").textContent = files.length > 1 ? `${files.length} items in one post · swipe to see them` : "";
+  $("#newPost").classList.remove("hidden");
+  $("#npText").focus();
+}
+function closeNewPost() { $("#newPost").classList.add("hidden"); npUrls.forEach(URL.revokeObjectURL); npUrls = []; $("#npPrev").innerHTML = ""; }
+$("#npCancel").onclick = () => { npFiles = []; closeNewPost(); };
+$("#newPost").onclick = e => { if (e.target.id === "newPost") $("#npCancel").click(); };
+$("#npText").onkeydown = e => e.stopPropagation();
+$("#npForm").onsubmit = e => {
+  e.preventDefault();
+  const files = npFiles, caption = $("#npText").value.trim();
+  npFiles = []; closeNewPost();
+  upload(files, caption);
+};
+
+const dots = $("#tDots");
+for (let i = 0; i < 24; i++) dots.append(document.createElement("i"));
+function progress(name, num, frac) {
+  $("#toast").classList.remove("hidden");
+  $("#tName").textContent = name;
+  $("#tNum").textContent = num;
+  const on = Math.round(frac * 24);
+  [...dots.children].forEach((d, i) => d.classList.toggle("on", i < on));
+}
+
+function putFile(f, user, onProg, post = "", i = 0) {
+  if (D) return D.upload(f, user, onProg);
+  return new Promise(res => {
+    const x = new XMLHttpRequest();
+    x.open("PUT", `/api/upload?name=${enc(f.name)}&mtime=${f.lastModified || ""}&user=${user}${post ? `&post=${post}&i=${i}` : ""}`);
+    x.setRequestHeader("X-Gallery", "1");
+    x.upload.onprogress = e => e.lengthComputable && onProg(e.loaded / e.total);
+    x.onload = () => { let d = {}; try { d = JSON.parse(x.responseText) } catch {} res({ ok: x.status === 200, status: x.status, msg: d.error || "", name: d.name }); };
+    x.onerror = () => res({ ok: false, status: 0, msg: "network error" });
+    x.send(f);
+  });
+}
+
+let busy = false;
+async function upload(files, caption = "") {
+  if (busy || !files.length) return;
+  busy = true;
+  const user = me;
+  files = files.slice(0, MAX_PER_POST);
+  const post = files.length > 1 ? [...crypto.getRandomValues(new Uint8Array(8))].map(b => b.toString(16).padStart(2, "0")).join("") : "";
+  $("#tErr").classList.add("hidden");
+  const failed = [];
+  for (let i = 0; i < files.length; i++) {
+    const f = files[i], tag = `${i + 1}/${files.length}`;
+    progress(f.name, tag, 0);
+    const r = await putFile(f, user, p => progress(f.name, tag, p), post, i);
+    if (r.ok && caption && r.name) { await api("POST", "/api/caption", { name: r.name, text: caption }); caption = ""; }
+    if (!r.ok) {
+      // Cloudflare's free plan rejects bodies over 100 MB with 413.
+      failed.push(`${f.name}: ${r.status === 413 ? "over 100 MB, upload it over Tailscale" : r.msg || "error " + r.status}`);
+      if (r.status === 401) { showLogin(); break; }
+    }
+  }
+  progress(failed.length ? `${failed.length} of ${files.length} failed` : `Posted as ${users[user]}`, "", 1);
+  if (failed.length) { $("#tErr").textContent = failed.join(" · "); $("#tErr").classList.remove("hidden"); }
+  setTimeout(() => $("#toast").classList.add("hidden"), failed.length ? 8000 : 1800);
+  busy = false;
+  load();
+}
+
+let dragN = 0;
+addEventListener("dragenter", e => { if (!$("#app").classList.contains("hidden") && e.dataTransfer.types.includes("Files")) { dragN++; $("#drop").classList.remove("hidden"); } });
+addEventListener("dragleave", () => { if (--dragN <= 0) { dragN = 0; $("#drop").classList.add("hidden"); } });
+addEventListener("dragover", e => e.preventDefault());
+addEventListener("drop", e => {
+  e.preventDefault(); dragN = 0; $("#drop").classList.add("hidden");
+  if (!$("#app").classList.contains("hidden")) newPost([...e.dataTransfer.files]);
+});
+
+/* full-screen viewer, with the person picker */
+function renderUserSeg() {
+  const it = view[cur];
+  $("#vDel").classList.toggle("hidden", mode !== "all" && it.user !== me); // Gallery: anyone can delete a photo
+  if (mode !== "all") { $("#vUser").innerHTML = `<span class="cap dim">Posted by ${esc(users[it.user])}</span>`; return; } // switching only in Gallery
+  $("#vUser").innerHTML = ids().map(u =>
+    `<button data-u="${u}" aria-pressed="${it.user === u}"><span class="rdot" style="${["", "background:#fff", "background:#f5c542", "background:#6ec1ff"][u]}"></span><span>${esc(users[u])}</span></button>`).join("");
+  $("#vUser").querySelectorAll("button").forEach(b => b.onclick = async () => {
+    const u = +b.dataset.u;
+    if (it.user === u) return;
+    const r = await api("POST", "/api/tag", { name: it.name, user: u });
+    if (!r.ok) return;
+    membersOf(it).forEach(x => x.user = u); // whole post changes hands
+    renderUserSeg(); renderCaption(); renderComments();
+  });
+}
+function openV(i, focusComment) {
+  cur = (i + view.length) % view.length;
+  const it = view[cur], m = src("m", it.name), stage = $("#stage");
+  document.querySelectorAll("#feedOut video").forEach(v => v.pause());
+  stage.innerHTML = "";
+  let el;
+  if (it.type === "video") {
+    el = document.createElement("video");
+    Object.assign(el, { src: m, controls: true, autoplay: true, playsInline: true, poster: src("p", it.name) });
+  } else {
+    el = new Image(); el.src = m; el.alt = it.name; el.draggable = false;
+  }
+  stage.append(el);
+  zReset(it.type === "image" ? el : null);
+  const v = $("#viewer");
+  if (v.classList.contains("hidden")) { // fresh open: bare full-screen preview
+    v.classList.toggle("bare", it.type === "image" && !focusComment);
+    if (v.requestFullscreen) v.requestFullscreen().catch(() => {}); // iPhone Safari: no-op
+  }
+  if (it.type === "video") v.classList.remove("bare"); // video taps go to its controls
+  if (view.length > 1) stage.insertAdjacentHTML("beforeend", `<button class="nav prev" aria-label="Previous">‹</button><button class="nav next" aria-label="Next">›</button>`);
+  stage.querySelector(".prev")?.addEventListener("click", () => openV(cur - 1));
+  stage.querySelector(".next")?.addEventListener("click", () => openV(cur + 1));
+  $("#vcount").textContent = `${pad(cur + 1)}/${pad(view.length)}`;
+  $("#vname").textContent = it.name;
+  const grp = membersOf(it);
+  $("#vmeta").textContent = `${dayLabel(it.mtime)} · ${fmtSize(it.size)}` + (grp.length > 1 ? ` · ${grp.indexOf(it) + 1} of ${grp.length} in post` : "");
+  $("#vDl").href = m;
+  renderUserSeg();
+  renderCaption();
+  renderComments(focusComment);
+  disarm();
+  $("#viewer").classList.remove("hidden");
+  document.body.style.overflow = "hidden";
+}
+function renderCaption() {
+  const it = leadOf(view[cur]), box = $("#vCap");
+  if (it.user !== me) {
+    box.innerHTML = it.caption ? `<p><b>${esc(users[it.user])}</b> <span></span></p>` : "";
+    if (it.caption) box.querySelector("span").textContent = it.caption;
+    return;
+  }
+  box.innerHTML = `<textarea class="line" rows="2" maxlength="2200" placeholder="Write a caption…" aria-label="Caption"></textarea>
+    <div class="vrow"><span class="cap dim" id="capMsg"></span><span style="flex:1"></span><button class="pill cap hidden" id="capSave">Save caption</button></div>`;
+  const ta = box.querySelector("textarea"), btn = $("#capSave");
+  ta.value = it.caption || "";
+  ta.oninput = () => { btn.classList.toggle("hidden", ta.value.trim() === (it.caption || "")); $("#capMsg").textContent = ""; };
+  ta.onkeydown = e => e.stopPropagation(); // arrow keys type, not change photo
+  btn.onclick = async () => {
+    const r = await api("POST", "/api/caption", { name: it.name, text: ta.value });
+    if (!r.ok) { $("#capMsg").textContent = "Couldn't save"; return; }
+    it.caption = (await r.json()).caption;
+    btn.classList.add("hidden"); $("#capMsg").textContent = "Saved";
+  };
+}
+const when = t => { const m = Math.floor((Date.now() - t) / 60000); return m < 1 ? "now" : m < 60 ? m + "m" : m < 1440 ? Math.floor(m / 60) + "h" : Math.floor(m / 1440) + "d"; };
+async function renderComments(focus) {
+  const it = leadOf(view[cur]), box = $("#vCom");
+  box.innerHTML = `<ul aria-label="Comments"></ul>
+    <form><textarea class="line" rows="1" maxlength="500" placeholder="Add a comment…" aria-label="Add a comment"></textarea>
+    <button class="pill cap" type="submit">Post</button></form>`;
+  const ul = box.querySelector("ul"), ta = box.querySelector("textarea"), form = box.querySelector("form");
+  ta.onkeydown = e => {
+    e.stopPropagation(); // typing arrows must not change photo
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); form.requestSubmit(); }
+  };
+  const draw = list => {
+    ul.innerHTML = "";
+    for (const c of list) {
+      const li = document.createElement("li");
+      li.innerHTML = `<b>${esc(users[c.by])}</b><span class="t"></span><span class="cap dim">${when(c.at)}</span>` +
+        (c.by === me ? `<button class="x" aria-label="Delete comment">✕</button>` : "");
+      li.querySelector(".t").textContent = c.text;
+      const x = li.querySelector(".x");
+      if (x) x.onclick = async () => {
+        if (!confirm("Delete this comment?")) return;
+        const r = await api("DELETE", `/api/comment?name=${enc(it.name)}&id=${c.id}`);
+        if (r.ok) { list = list.filter(y => y !== c); sync(list); draw(list); }
+      };
+      ul.append(li);
+    }
+    ul.scrollTop = ul.scrollHeight;
+  };
+  const sync = list => { it.comments = list.length; it.last = list[list.length - 1] || null; };
+  let list = [];
+  if (it.comments) {
+    const r = await api("GET", "/api/comments?name=" + enc(it.name));
+    if (view[cur] !== it) return; // moved to another photo meanwhile
+    if (r.ok) list = (await r.json()).comments;
+  }
+  draw(list);
+  form.onsubmit = async e => {
+    e.preventDefault();
+    const text = ta.value.trim();
+    if (!text) return;
+    const r = await api("POST", "/api/comment", { name: it.name, text });
+    if (!r.ok) return;
+    list = [...list, (await r.json()).comment]; sync(list); draw(list);
+    ta.value = "";
+  };
+  if (focus) ta.focus();
+}
+function closeV() {
+  if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+  $("#viewer").classList.add("hidden");
+  $("#stage").innerHTML = "";
+  document.body.style.overflow = "";
+  render(); // reflect any person changes
+}
+function disarm() { const b = $("#vDel"); b.classList.remove("armed"); b.textContent = mode === "all" ? "Delete photo" : view[cur] && membersOf(view[cur]).length > 1 ? "Delete post" : "Delete"; }
+$("#vClose").onclick = closeV;
+$("#vDel").onclick = async () => {
+  const b = $("#vDel");
+  const it = view[cur], one = mode === "all", n = one ? 1 : membersOf(it).length;
+  if (!b.classList.contains("armed")) { b.classList.add("armed"); b.textContent = n > 1 ? `Tap again: delete all ${n}` : "Tap again"; return; }
+  const r = await api("DELETE", "/api/file?name=" + enc(it.name) + (one ? "&scope=photo" : ""));
+  if (!r.ok) { b.textContent = "Failed"; return; }
+  const gone = new Set((await r.json()).deleted || [it.name]);
+  items = items.filter(x => !gone.has(x.name));
+  if (one) { const l = await api("GET", "/api/list"); if (l.ok) items = (await l.json()).items; } // caption/comments may move to the next photo
+  indexPosts();
+  const next = cur;
+  render();
+  view.length ? openV(Math.min(next, view.length - 1)) : closeV();
+};
+addEventListener("keydown", e => {
+  if (e.key === "Escape" && !$("#settings").classList.contains("hidden")) return closeSettings();
+  if ($("#viewer").classList.contains("hidden")) return;
+  if (e.key === "Escape") closeV();
+  if (e.key === "ArrowLeft") openV(cur - 1);
+  if (e.key === "ArrowRight") openV(cur + 1);
+});
+/* zoom: pinch, double-tap, mouse wheel; drag to pan while zoomed */
+let z = { s: 1, x: 0, y: 0 }, zImg = null;
+const pts = new Map();
+let pinch = null, lastTap = 0, tapStart = null, tapTimer = 0;
+function zReset(img) { zImg = img; z = { s: 1, x: 0, y: 0 }; pts.clear(); pinch = null; zApply(); }
+function zApply() {
+  if (!zImg) return;
+  const st = $("#stage"), mx = Math.max(0, (zImg.offsetWidth * z.s - st.clientWidth) / 2), my = Math.max(0, (zImg.offsetHeight * z.s - st.clientHeight) / 2);
+  z.x = Math.min(mx, Math.max(-mx, z.x)); z.y = Math.min(my, Math.max(-my, z.y));
+  zImg.style.transform = z.s === 1 ? "" : `translate(${z.x}px, ${z.y}px) scale(${z.s})`;
+  zImg.classList.toggle("zoomed", z.s > 1);
+}
+function zoomAt(ns, cx, cy) { // cx, cy: client coords of the zoom centre
+  const r = $("#stage").getBoundingClientRect(), px = cx - r.left - r.width / 2, py = cy - r.top - r.height / 2;
+  ns = Math.min(5, Math.max(1, ns));
+  z.x = px - (px - z.x) * ns / z.s; z.y = py - (py - z.y) * ns / z.s; z.s = ns;
+  if (ns === 1) z.x = z.y = 0;
+  zApply();
+}
+const stg = $("#stage");
+stg.addEventListener("pointerdown", e => {
+  if (!zImg || e.target !== zImg) return;
+  zImg.setPointerCapture(e.pointerId);
+  pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (pts.size === 1) tapStart = { x: e.clientX, y: e.clientY, t: Date.now() };
+  if (pts.size === 2) {
+    const [a, b] = [...pts.values()];
+    pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), s: z.s };
+    tapStart = null;
+  }
+});
+stg.addEventListener("pointermove", e => {
+  if (!zImg || !pts.has(e.pointerId)) return;
+  const prev = pts.get(e.pointerId), cur2 = { x: e.clientX, y: e.clientY };
+  pts.set(e.pointerId, cur2);
+  if (pts.size === 2 && pinch) {
+    const [a, b] = [...pts.values()];
+    zoomAt(pinch.s * Math.hypot(a.x - b.x, a.y - b.y) / pinch.d, (a.x + b.x) / 2, (a.y + b.y) / 2);
+  } else if (pts.size === 1 && z.s > 1) {
+    z.x += cur2.x - prev.x; z.y += cur2.y - prev.y; zApply();
+  }
+});
+const zUp = e => {
+  if (!pts.has(e.pointerId)) return;
+  pts.delete(e.pointerId);
+  if (pts.size < 2) pinch = null;
+  if (pts.size === 0 && tapStart && Math.hypot(e.clientX - tapStart.x, e.clientY - tapStart.y) < 10 && Date.now() - tapStart.t < 300) {
+    if (Date.now() - lastTap < 320) { clearTimeout(tapTimer); z.s > 1 ? zoomAt(1, e.clientX, e.clientY) : zoomAt(2.5, e.clientX, e.clientY); lastTap = 0; }
+    else { lastTap = Date.now(); tapTimer = setTimeout(() => $("#viewer").classList.toggle("bare"), 320); } // single tap: show/hide bars
+  }
+};
+stg.addEventListener("pointerup", zUp);
+stg.addEventListener("pointercancel", zUp);
+stg.addEventListener("wheel", e => {
+  if (!zImg) return;
+  e.preventDefault();
+  zoomAt(z.s * Math.exp(-e.deltaY * 0.0015), e.clientX, e.clientY);
+}, { passive: false });
+addEventListener("resize", zApply);
+
+/* swipe left/right to change photo, unless zoomed in or pinching */
+let sx = null, multi = false;
+stg.addEventListener("touchstart", e => {
+  if (e.touches.length > 1) multi = true;
+  sx = e.touches.length === 1 && !multi ? e.touches[0].clientX : null;
+}, { passive: true });
+stg.addEventListener("touchend", e => {
+  if (e.touches.length === 0) setTimeout(() => multi = false);
+  if (sx === null || multi || z.s > 1) { sx = null; return; }
+  const dx = e.changedTouches[0].clientX - sx; sx = null;
+  if (Math.abs(dx) > 60) openV(cur + (dx < 0 ? 1 : -1));
+});
+
+load();
+</script>
+</body>
+</html>
