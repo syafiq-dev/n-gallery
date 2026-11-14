@@ -1,0 +1,11 @@
+services:
+  gallery:
+    build: .
+    container_name: gallery
+    restart: unless-stopped
+    ports:
+      - "8088:8088"
+    env_file: .env          # GALLERY_PASSWORD=...
+    volumes:
+      - /srv/gallery:/data  # where photos live; change to suit
+    mem_limit: 300m
